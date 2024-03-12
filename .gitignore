@@ -70,6 +70,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/build
 
 # PyBuilder
 target/
@@ -127,3 +128,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+pyrightconfig.json
+db.sqlite3
+examples/db.sqlite3
+db.sqlite
+examples/db.sqlite
