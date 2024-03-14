@@ -67,7 +67,7 @@ def make_task_run_mixin(task_model: type[TaskMixin]):
             return sa.Column(sa.Integer, sa.ForeignKey(task_model.id), nullable=False)
 
         @orm.declared_attr
-        def task(cls):  # type: ignore
+        def task(cls):
             return orm.relationship(task_model, backref=orm.backref("runs"))
 
     return TaskRunMixin
@@ -108,7 +108,7 @@ def make_queue_mixin(task_model: type[TaskMixin]):
             return sa.Column(sa.Integer, sa.ForeignKey(task_model.id), nullable=False)
 
         @orm.declared_attr
-        def task(cls):  # type: ignore
+        def task(cls):
             return orm.relationship(task_model, backref=orm.backref("enqueued"))
 
     return QueueMixin

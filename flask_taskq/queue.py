@@ -181,14 +181,14 @@ class TaskQ:
                 self.queue_model.mutex
                 == self.session.query(self.queue_model.mutex)
                 .filter(self.task_model.status.in_((TaskStatus.NEW, TaskStatus.RETRY)))
-                .join(self.task_model, self.task_model.id == self.queue_model.task_id)  # type: ignore
+                .join(self.task_model, self.task_model.id == self.queue_model.task_id)
                 .group_by(self.queue_model.mutex)
                 .order_by(self.queue_model.priority.desc())
                 .limit(1)
                 .scalar_subquery(),
                 self.task_model.status.in_((TaskStatus.NEW, TaskStatus.RETRY)),
             )
-            .join(self.task_model, self.task_model.id == self.queue_model.task_id)  # type: ignore
+            .join(self.task_model, self.task_model.id == self.queue_model.task_id)
             .order_by(self.queue_model.priority.desc(), self.queue_model.created.desc())
             .with_for_update(skip_locked=True)
         ).all()
@@ -206,8 +206,8 @@ class TaskQ:
                 0 if strategy in (TaskStrategy.FIRST, TaskStrategy.UNIQUE) else -1
             )
             for to_update in enqueued_tasks:
-                to_update.task.status = (  # type: ignore
-                    TaskStatus.BLOCKED
+                to_update.task.status = (
+                    TaskStatus.BLOCKED  # type: ignore[assignment]
                     if strategy == TaskStrategy.UNIQUE
                     else TaskStatus.CANCELLED
                 )
@@ -215,7 +215,7 @@ class TaskQ:
                 if strategy != TaskStrategy.UNIQUE:
                     self.session.delete(to_update)
 
-        enqueued_task.task.status = TaskStatus.PROGRESS  # type: ignore
+        enqueued_task.task.status = TaskStatus.PROGRESS  # type: ignore[assignment]
         self.session.add(enqueued_task)
 
         self.session.commit()
@@ -226,7 +226,7 @@ class TaskQ:
         enqueued_task, blocked_enqueued_tasks = self.pop()
         if enqueued_task is None:
             current_app.logger.info("No tasks to proceed, skipping.")
-            return
+            return None
 
         if blocked_enqueued_tasks:
             current_app.logger.info(
@@ -255,8 +255,8 @@ class TaskQ:
             self.session.add(task_run)
             task_proxy = self.get_task_proxy(enqueued_task.task.handler)
             if task_proxy.retries < 0 or enqueued_task.retries < task_proxy.retries:
-                enqueued_task.task.status = TaskStatus.RETRY  # type: ignore
-                enqueued_task.retries += 1  # type: ignore
+                enqueued_task.task.status = TaskStatus.RETRY  # type: ignore[assignment]
+                enqueued_task.retries += 1  # type: ignore[assignment]
                 self.session.add(enqueued_task)
                 current_app.logger.info(
                     "Task %s processing falied, will retry.", enqueued_task.task
@@ -266,18 +266,18 @@ class TaskQ:
                     "Task %s processing failded, finishing as failed.",
                     enqueued_task.task,
                 )
-                enqueued_task.task.status = TaskStatus.FAILED  # type: ignore
+                enqueued_task.task.status = TaskStatus.FAILED  # type: ignore[assignment]
                 self.session.delete(enqueued_task)
             self.session.add(enqueued_task.task)
         else:
             task_run = self.task_run_model(task=enqueued_task.task, out=result)
-            enqueued_task.task.status = TaskStatus.COMPLETED  # type: ignore
+            enqueued_task.task.status = TaskStatus.COMPLETED  # type: ignore[assignment]
             self.session.add(task_run)
             self.session.add(enqueued_task.task)
             self.session.delete(enqueued_task)
 
         for to_unlock in blocked_enqueued_tasks:
-            to_unlock.task.status = TaskStatus.NEW  # type: ignore
+            to_unlock.task.status = TaskStatus.NEW  # type: ignore[assignment]
             self.session.add(to_unlock.task)
 
         self.session.commit()

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "flask-taskq"
-version = "0.1.1"
+version = "0.1.2"
 description = "Database driven task queue for Flask applications"
 authors = ["Ivan Fedorov <inbox@titaniumhocker.ru>"]
 license = "MIT"
@@ -92,7 +92,7 @@ fail_under = 80
 show_missing = true
 
 [tool.mypy]
-files="flask_constance"
+files="flask_taskq"
 strict_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
@@ -102,9 +102,7 @@ show_error_codes = true
 
 [[tool.mypy.overrides]]
 module = [
-  "flask_admin.*",
-  "flask_wtf.*",
-  "wtforms.*",
+  "sqlalchemy_utils.*",
 ]
 ignore_missing_imports = true
 
