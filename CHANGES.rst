@@ -17,6 +17,11 @@ Fixes
 
 - (:issue:`10`) Fixed SQL for getting tasks to process.
 
+Features
+========
+
+- (:issue:`9`) Added find_by_func function to TaskQ class.
+
 0.1.2
 =====
 
