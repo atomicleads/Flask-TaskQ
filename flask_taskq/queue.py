@@ -9,6 +9,7 @@ from flask import Flask, current_app, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_taskq.models import QueueMixinBase, TaskMixin, TaskRunMixinBase
 from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.sql.expression import func
 
 from .cli import cli
 from .const import DEFAULT_RETRIES, DEFAULT_TASK_PRIORITY
@@ -135,17 +136,34 @@ class TaskQ:
         return query.first()
 
     def tasks(self, all_: bool = False) -> t.Sequence[TaskMixin]:
+        """Get all tasks.
+
+        :param all_: Get all tasks, with completed. If false - returns only enqueued.
+        :returns: List of tasks.
+        """
         query = self.session.query(self.task_model)
         if not all_:
             query = query.filter(self.task_model.enqueued != None)
         return query.all()
 
     def restart(self, task: TaskMixin) -> QueueMixinBase:
+        """Restart task.
+
+        Actually creates new task with same parameters.
+
+        :param task: Task to restart.
+        :returns: New task.
+        """
         return self.enqueue(
             task.handler, *task.payload["args"], **task.payload["kwargs"]  # type: ignore
         )
 
     def cancel(self, task: TaskMixin) -> bool:
+        """Cancel task.
+
+        :param task: Task to cancel.
+        :returns: True if task successfully cancelled, otherwise - False.
+        """
         if task.status not in (TaskStatus.NEW, TaskStatus.RETRY):
             return False
         task.status = TaskStatus.CANCELLED  # type: ignore
@@ -156,6 +174,13 @@ class TaskQ:
         return True
 
     def enqueue(self, task: TaskProxy | t.Callable, *args, **kwargs) -> QueueMixinBase:
+        """Enqueue task.
+
+        :param task: TaskProxy object(decorated task) or task function.
+        :param args: Positional arguments for the task.
+        :param kwargs: Named arguments for the task.
+        :returns: Enqueued task object.
+        """
         task = self.get_task_proxy(task)
         task_instance = self.task_model(
             name=task.name,
@@ -175,6 +200,12 @@ class TaskQ:
         return enqueued_task
 
     def pop(self) -> tuple[QueueMixinBase | None, t.Sequence[QueueMixinBase]]:
+        """Pop task from the queue for processing.
+
+        All returned tasks changes it's status from NEW/RETRY to PROGRESS/BLOCKED.
+
+        :returns: Popped task and tasks blocked by that task(if UNIQUE strategy is used).
+        """
         enqueued_tasks: list[QueueMixinBase] = (
             self.session.query(self.queue_model)
             .filter(
@@ -183,7 +214,7 @@ class TaskQ:
                 .filter(self.task_model.status.in_((TaskStatus.NEW, TaskStatus.RETRY)))
                 .join(self.task_model, self.task_model.id == self.queue_model.task_id)
                 .group_by(self.queue_model.mutex)
-                .order_by(self.queue_model.priority.desc())
+                .order_by(func.max(self.queue_model.priority).desc())
                 .limit(1)
                 .scalar_subquery(),
                 self.task_model.status.in_((TaskStatus.NEW, TaskStatus.RETRY)),
@@ -223,6 +254,10 @@ class TaskQ:
         return enqueued_task, enqueued_tasks
 
     def run(self) -> TaskRunMixinBase | None:
+        """Process task.
+
+        :returns: Processed task or None if no tasks to process.
+        """
         enqueued_task, blocked_enqueued_tasks = self.pop()
         if enqueued_task is None:
             current_app.logger.info("No tasks to proceed, skipping.")
@@ -235,9 +270,7 @@ class TaskQ:
                 ", ".join(str(blocked.task) for blocked in blocked_enqueued_tasks),
             )
         else:
-            current_app.logger.info(
-                "Processing task %s", enqueued_task.task
-            )
+            current_app.logger.info("Processing task %s", enqueued_task.task)
 
         try:
             # NOTE: Run each task in separate application context to ensure
