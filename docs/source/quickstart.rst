@@ -50,11 +50,11 @@ After you initialized extension you can define tasks.
    def foo():
        return "bar"
 
-    def bar(r="foo"):
-        return r
+   def bar(r="foo"):
+       return r
 
-    # And also added with add_task method.
-    taskq.add_task(bar)
+   # And also added with add_task method.
+   taskq.add_task(bar)
 
 
 Enqueue task
