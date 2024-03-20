@@ -135,6 +135,33 @@ class TaskQ:
             query = query.with_for_update(skip_locked=False)
         return query.first()
 
+    def find_by_func(
+        self, func: t.Callable | TaskProxy, all_: bool = False
+    ) -> t.Sequence[TaskMixin]:
+        """Func task instance by handler function.
+
+        :param func: Handler function.
+        :returns: Tasks with that handler function.
+        :raise ValueError: If provided handler function is not registered as task.
+        """
+        if func not in self.registered and func not in self.registered.values():
+            raise ValueError(f"{func} is not registered handler.")
+        query = (
+            (
+                self.session.query(self.task_model).filter(
+                    self.task_model.handler_string
+                    == f"{func.__module__}.{func.__name__}"
+                )
+            )
+            if not isinstance(func, TaskProxy)
+            else self.session.query(self.task_model).filter(
+                self.task_model.handler_string == func.handler_str
+            )
+        )
+        if not all_:
+            query = query.filter(self.task_model.enqueued != None)
+        return query.all()
+
     def tasks(self, all_: bool = False) -> t.Sequence[TaskMixin]:
         """Get all tasks.
 
