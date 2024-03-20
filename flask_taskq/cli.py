@@ -9,7 +9,7 @@ from prettytable import PrettyTable
 from .globals import taskq
 from .worker import WorkerType, workers
 
-cli = AppGroup("taskq")
+cli = AppGroup("taskq", help="Background tasks management.")
 
 
 @cli.command("list")
@@ -26,7 +26,7 @@ cli = AppGroup("taskq")
 def list_tasks(all_: bool):
     """Show tasks."""
     table = PrettyTable(
-        ["id", "name", "status", "handler", "runs","enqueued", "creared", "updated"]
+        ["id", "name", "status", "handler", "runs", "enqueued", "creared", "updated"]
     )
     for task in taskq.tasks(all_):
         table.add_row(
@@ -52,7 +52,17 @@ def show_task(task_id: int):
         click.echo(f"Task {task_id} not found.", err=True)
         sys.exit(1)
     task_table = PrettyTable(
-        ["id", "name", "status", "handler", "runs","enqueued","payload", "creared", "updated"]
+        [
+            "id",
+            "name",
+            "status",
+            "handler",
+            "runs",
+            "enqueued",
+            "payload",
+            "creared",
+            "updated",
+        ]
     )
     task_table.add_row(
         [
